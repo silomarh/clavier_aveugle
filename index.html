@@ -2,301 +2,187 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLAVIER FANTÔME - Prototype Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CLAVIER FANTÔME - Mobile Training</title>
     <style>
         :root {
-            --bg: #121212;
-            --key-bg: #2a2a2a;
-            --accent: #3498db;
-            --success: #2ecc71;
-            --error: #e74c3c;
-            --text-dim: #444;
-            --text-light: #ecf0f1;
+            --bg: #000000;
+            --key-bg: #2c2c2e; /* Couleur exacte des touches iOS Dark */
+            --accent: #0a84ff;
+            --success: #30d158;
+            --error: #ff453a;
+            --text-dim: #1c1c1e;
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
-            color: var(--text-light);
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end; /* Clavier en bas comme sur mobile */
             height: 100vh;
             margin: 0;
+            padding-bottom: 20px;
             overflow: hidden;
+            touch-action: manipulation;
         }
 
-        /* En-tête Score */
-        #score-board {
-            position: absolute;
-            top: 30px;
-            font-size: 1.1rem;
-            background: rgba(255,255,255,0.05);
-            padding: 12px 25px;
-            border-radius: 50px;
-            border: 1px solid #333;
-            letter-spacing: 1px;
-        }
-
-        /* Zone du mot à taper */
         #target-word {
-            font-size: 4.5rem;
-            font-weight: 800;
-            letter-spacing: 15px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: center;
-            min-height: 1.2em;
+            font-size: 2.8rem;
+            font-weight: 600;
+            margin-bottom: auto; /* Pousse le mot vers le haut */
+            margin-top: 60px;
+            letter-spacing: 5px;
+            text-align: center;
         }
 
         .char {
-            color: var(--text-dim);
-            border-bottom: 6px solid var(--text-dim);
-            margin: 0 8px;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
+            color: #333;
+            border-bottom: 3px solid #333;
+            margin: 0 4px;
+            display: inline-block;
+            min-width: 25px;
         }
 
-        .char-done {
-            color: var(--success);
-            border-bottom-color: var(--success);
-            text-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
-        }
+        .char-done { color: var(--success); border-bottom-color: var(--success); }
+        .reveal-solution { color: var(--error) !important; border-bottom-color: var(--error) !important; }
 
-        .reveal-solution {
-            color: var(--error) !important;
-            border-bottom-color: var(--error) !important;
-        }
-
-        /* Clavier Virtuel */
+        /* Conteneur Clavier Mobile */
         #keyboard {
-            background: #1a1a1a;
-            padding: 25px;
-            border-radius: 20px;
-            border: 1px solid #333;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            padding: 5px;
+            box-sizing: border-box;
         }
 
-        .row { display: flex; justify-content: center; margin-bottom: 10px; }
+        .row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        /* Décalages pour simuler un vrai clavier */
+        #row-1 { padding: 0 5%; } /* Ligne QSD... */
+        #row-2 { padding: 0 15% 0 5%; } /* Ligne WXC... */
 
         .key {
-            width: 55px;
-            height: 55px;
+            flex: 1;
+            height: 46px;
             background: var(--key-bg);
-            margin: 5px;
-            border-radius: 10px;
+            margin: 3px;
+            border-radius: 6px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.1s;
-            color: transparent; /* Masqué par défaut */
-            border-bottom: 4px solid #000;
             font-size: 1.2rem;
+            font-weight: 400;
+            color: transparent; /* Masqué pour l'entraînement */
+            box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.05s;
         }
 
-        .key.active {
-            background: var(--accent);
-            color: white !important;
-            transform: translateY(4px);
-            border-bottom-width: 0;
+        /* Effet de pression style iOS */
+        .key.active { background: #636366; color: white !important; transform: scale(1.1); }
+        .key.wrong { background: var(--error); color: white !important; }
+
+        .controls {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            box-sizing: border-box;
         }
-
-        .key.wrong {
-            background: var(--error);
-            color: white !important;
-            animation: shake 0.2s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        /* Contrôles et Feedback */
-        #message { margin-top: 25px; height: 30px; font-size: 1.2rem; color: var(--accent); }
-
-        .controls { margin-top: 30px; }
 
         #btn-skip {
-            background: transparent;
-            border: 1px solid #444;
-            color: #666;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
+            background: none;
+            border: none;
+            color: #0a84ff;
             font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            cursor: pointer;
         }
-
-        #btn-skip:hover {
-            background: #c0392b;
-            color: white;
-            border-color: #c0392b;
-        }
-
-        /* État de chargement */
-        #loader { font-size: 1.5rem; color: var(--accent); text-align: center; }
+        
+        #score-display { color: #8e8e93; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <div id="score-board">
-        PROGRESSION : <span id="score">0</span> / <span id="total">0</span>
+    <div id="target-word">CHARGEMENT...</div>
+
+    <div id="keyboard">
+        <div class="row" id="row-0"></div>
+        <div class="row" id="row-1"></div>
+        <div class="row" id="row-2"></div>
     </div>
 
-    <div id="loader">Connexion à votre Google Sheet...</div>
-
-    <div id="game-area" style="display:none;">
-        <div id="target-word"></div>
-        
-        <div id="keyboard">
-            <div class="row" id="row-0"></div>
-            <div class="row" id="row-1"></div>
-            <div class="row" id="row-2"></div>
-        </div>
-
-        <div id="message"></div>
-
-        <div class="controls">
-            <button id="btn-skip" onclick="skipWord()">Passer ce mot</button>
-        </div>
+    <div class="controls">
+        <div id="score-display">Mots : <span id="score">0</span></div>
+        <button id="btn-skip" onclick="skipWord()">Passer</button>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOCNGhxKhSf8PAOwpz5jUP_briDy6g3ujnVpgY7hXqW1Puq-vgGogaOLLqAJedcAxp/exec"; 
-        
-        let motsList = [];
-        let currentWordIndex = 0;
-        let currentCharIndex = 0;
-        let scoreCount = 0;
-        let isTransitioning = false; // Pour éviter le spam pendant le changement de mot
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOCNGhxKhSf8PAOwpz5jUP_briDy6g3ujnVpgY7hXqW1Puq-vgGogaOLLqAJedcAxp/exec";
+        let motsList = [], currentWordIndex = 0, currentCharIndex = 0, scoreCount = 0, isTransitioning = false;
 
+        // Disposition AZERTY mobile standard
         const layout = [
             ["A","Z","E","R","T","Y","U","I","O","P"],
             ["Q","S","D","F","G","H","J","K","L","M"],
             ["W","X","C","V","B","N"]
         ];
 
-        // 1. Récupération des données
         async function loadWords() {
             try {
                 const response = await fetch(SCRIPT_URL);
                 const data = await response.json();
-                
-                // On extrait spécifiquement la clé "a" de ton JSON
-                motsList = data
-                    .map(item => item.a)
-                    .filter(m => m && typeof m === 'string' && m.length > 0)
-                    .map(m => m.toUpperCase().trim());
-
-                if (motsList.length > 0) {
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('game-area').style.display = 'block';
-                    document.getElementById('total').innerText = motsList.length;
-                    initWord();
-                } else {
-                    document.getElementById('loader').innerText = "Aucun mot trouvé dans la colonne 'a'.";
-                }
-            } catch (e) {
-                document.getElementById('loader').innerText = "Erreur de connexion. Vérifiez l'URL du script et les accès.";
-                console.error(e);
-            }
+                motsList = data.map(item => item.a).filter(m => m).map(m => m.toUpperCase().trim());
+                if (motsList.length > 0) initWord();
+            } catch (e) { document.getElementById('target-word').innerText = "ERREUR"; }
         }
 
-        // 2. Affichage du mot actuel
         function initWord() {
             if (currentWordIndex >= motsList.length) {
-                showFinalResults();
+                document.getElementById('target-word').innerHTML = "FINI !";
                 return;
             }
-
             isTransitioning = false;
             currentCharIndex = 0;
             const word = motsList[currentWordIndex];
-            const container = document.getElementById('target-word');
-            
-            container.innerHTML = word.split('').map(c => `<span class="char">${c}</span>`).join('');
-            document.getElementById('message').innerText = "";
-            document.getElementById('btn-skip').style.visibility = "visible";
+            document.getElementById('target-word').innerHTML = word.split('').map(c => `<span class="char">${c}</span>`).join('');
         }
 
-        // 3. Logique de saisie
         function handleInput(letter) {
-            if (isTransitioning || currentWordIndex >= motsList.length) return;
-
+            if (isTransitioning) return;
             const currentWord = motsList[currentWordIndex];
-            const targetLetter = currentWord[currentCharIndex];
             const keyElement = document.getElementById(`key-${letter}`);
-
             if (!keyElement) return;
 
-            if (letter === targetLetter) {
-                // SUCCÈS
+            if (letter === currentWord[currentCharIndex]) {
                 keyElement.classList.add('active');
                 document.querySelectorAll('.char')[currentCharIndex].classList.add('char-done');
                 currentCharIndex++;
-
                 if (currentCharIndex === currentWord.length) {
                     isTransitioning = true;
                     scoreCount++;
                     document.getElementById('score').innerText = scoreCount;
-                    document.getElementById('message').innerText = "EXCELLENT !";
-                    document.getElementById('btn-skip').style.visibility = "hidden";
-                    setTimeout(() => {
-                        currentWordIndex++;
-                        initWord();
-                    }, 1000);
+                    setTimeout(() => { currentWordIndex++; initWord(); }, 600);
                 }
             } else {
-                // ERREUR
                 keyElement.classList.add('wrong');
             }
-
-            setTimeout(() => {
-                keyElement.classList.remove('active', 'wrong');
-            }, 150);
+            setTimeout(() => keyElement.classList.remove('active', 'wrong'), 100);
         }
 
-        // 4. Fonction Passer (Abandon)
         function skipWord() {
             if (isTransitioning) return;
             isTransitioning = true;
-
-            // Révéler la solution
-            const spans = document.querySelectorAll('.char');
-            spans.forEach((span, i) => {
-                if (i >= currentCharIndex) span.classList.add('reveal-solution');
-            });
-
-            document.getElementById('message').innerText = "Le mot était : " + motsList[currentWordIndex];
-            
-            setTimeout(() => {
-                currentWordIndex++;
-                initWord();
-            }, 1500);
+            document.querySelectorAll('.char').forEach((s, i) => { if (i >= currentCharIndex) s.classList.add('reveal-solution'); });
+            setTimeout(() => { currentWordIndex++; initWord(); }, 1000);
         }
 
-        // 5. Interface Finale
-        function showFinalResults() {
-            const area = document.getElementById('game-area');
-            area.innerHTML = `
-                <h1 style="font-size:3rem; color:var(--success)">SESSION TERMINÉE</h1>
-                <p style="font-size:1.5rem">Vous avez maîtrisé ${scoreCount} mots sur ${motsList.length}.</p>
-                <button onclick="location.reload()" style="padding:15px 30px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:1.1rem; margin-top:20px;">
-                    RECOMMENCER
-                </button>
-            `;
-        }
-
-        // 6. Construction du clavier
         function buildKeyboard() {
             layout.forEach((row, i) => {
                 const rowDiv = document.getElementById(`row-${i}`);
@@ -305,23 +191,8 @@
                     keyDiv.className = 'key';
                     keyDiv.id = `key-${letter}`;
                     keyDiv.innerText = letter;
-                    keyDiv.onclick = () => handleInput(letter);
-                    rowDiv.appendChild(keyDiv);
-                });
-            });
-        }
-
-        // Listeners
-        window.addEventListener('keydown', (e) => {
-            const key = e.key.toUpperCase();
-            if (key === "ESCAPE") skipWord();
-            else handleInput(key);
-        });
-
-        // Start
-        buildKeyboard();
-        loadWords();
-    </script>
-</body>
-
-</html>
+                    // Event listeners optimisés mobile
+                    keyDiv.addEventListener('touchstart', (e) => { 
+                        e.preventDefault(); 
+                        handleInput(letter); 
+                    });
