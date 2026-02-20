@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CLAVIER FANTÔME - Fix</title>
+    <title>CLAVIER FANTÔME</title>
     <style>
         :root {
             --bg: #000000;
@@ -20,57 +20,56 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-end;
+            justify-content: space-between;
             height: 100vh;
             margin: 0;
-            padding-bottom: env(safe-area-inset-bottom, 20px);
+            padding: 20px 0;
+            box-sizing: border-box;
             overflow: hidden;
+            touch-action: manipulation;
         }
 
         #target-word {
             font-size: 2.2rem;
             font-weight: 700;
-            margin-bottom: auto;
-            margin-top: 50px;
             text-align: center;
-            min-height: 100px;
+            margin-top: 40px;
             padding: 0 10px;
+            letter-spacing: 4px;
         }
 
         .char {
-            color: #333;
-            border-bottom: 3px solid #333;
+            color: #222;
+            border-bottom: 3px solid #222;
             margin: 0 3px;
             display: inline-block;
             min-width: 20px;
+            text-transform: uppercase;
         }
 
         .char-done { color: var(--success); border-bottom-color: var(--success); }
         .reveal-solution { color: var(--error) !important; border-bottom-color: var(--error) !important; }
 
-        #keyboard {
+        #keyboard-container {
             width: 100%;
             max-width: 430px;
-            padding: 4px;
-            box-sizing: border-box;
-            background: #1c1c1e;
-            border-top: 1px solid #333;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
         }
 
         .row {
             display: flex;
             justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             width: 100%;
         }
 
-        /* Décalage des lignes style iPhone */
-        #row-1 { width: 95%; margin-left: 2.5%; }
-        #row-2 { width: 80%; }
+        /* Style iPhone : décalage des lignes */
+        #row-1 { padding: 0 5%; }
+        #row-2 { padding: 0 12% 0 3%; }
 
         .key {
             flex: 1;
-            height: 48px;
+            height: 46px;
             background: var(--key-bg);
             margin: 3px;
             border-radius: 6px;
@@ -78,46 +77,50 @@
             justify-content: center;
             align-items: center;
             font-size: 1.1rem;
-            color: transparent; 
+            color: transparent; /* Masqué */
             box-shadow: 0 1px 2px rgba(0,0,0,0.5);
             -webkit-tap-highlight-color: transparent;
         }
 
-        .key.active { background: #636366; color: white !important; transform: scale(1.1); }
+        .key.active { background: #636366; color: white !important; }
         .key.wrong { background: var(--error); color: white !important; }
 
-        .controls {
+        .footer {
             width: 100%;
             display: flex;
             justify-content: space-between;
-            padding: 10px 20px;
-            background: #1c1c1e;
+            padding: 10px 25px;
+            box-sizing: border-box;
         }
 
-        #btn-skip { background: none; border: none; color: var(--accent); font-size: 1rem; }
-        #status { font-size: 0.8rem; color: #666; }
+        #btn-skip { background: none; border: none; color: var(--accent); font-size: 1rem; padding: 10px; }
+        #score-display { color: #666; font-size: 0.9rem; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="target-word">INITIALISATION...</div>
 
-    <div id="keyboard">
+    <div id="keyboard-container">
         <div class="row" id="row-0"></div>
         <div class="row" id="row-1"></div>
         <div class="row" id="row-2"></div>
-    </div>
-
-    <div class="controls">
-        <div id="status">Mots : <span id="score">0</span></div>
-        <button id="btn-skip" onclick="skipWord()">Passer</button>
+        
+        <div class="footer">
+            <div id="score-display">Score : <span id="score">0</span></div>
+            <button id="btn-skip" onclick="skipWord()">Passer</button>
+        </div>
     </div>
 
     <script>
-        // REMPLACE BIEN L'URL CI-DESSOUS
+        // --- METS TON URL ICI ---
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOCNGhxKhSf8PAOwpz5jUP_briDy6g3ujnVpgY7hXqW1Puq-vgGogaOLLqAJedcAxp/exec";
 
-        let motsList = [], currentWordIndex = 0, currentCharIndex = 0, scoreCount = 0, isTransitioning = false;
+        let motsList = [];
+        let currentWordIndex = 0;
+        let currentCharIndex = 0;
+        let scoreCount = 0;
+        let isTransitioning = false;
 
         const layout = [
             ["A","Z","E","R","T","Y","U","I","O","P"],
@@ -125,44 +128,110 @@
             ["W","X","C","V","B","N"]
         ];
 
+        // 1. Construction du clavier (AVANT tout le reste)
+        function buildKeyboard() {
+            for (let i = 0; i < layout.length; i++) {
+                const rowDiv = document.getElementById('row-' + i);
+                layout[i].forEach(letter => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'key';
+                    keyDiv.id = 'key-' + letter;
+                    keyDiv.innerText = letter;
+                    
+                    // Interaction mobile
+                    keyDiv.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        handleInput(letter);
+                    });
+                    // Interaction souris (secours)
+                    keyDiv.addEventListener('click', function() {
+                        handleInput(letter);
+                    });
+                    
+                    rowDiv.appendChild(keyDiv);
+                });
+            }
+        }
+
+        // 2. Chargement des mots
         async function loadWords() {
             const display = document.getElementById('target-word');
-            if (SCRIPT_URL.includes("L_URL_DE_TON_SCRIPT")) {
-                display.innerText = "URL NON CONFIGURÉE";
-                return;
-            }
-
             try {
                 display.innerText = "CONNEXION...";
                 const response = await fetch(SCRIPT_URL);
                 const data = await response.json();
                 
-                // Extraction robuste de la clé "a"
                 motsList = data.map(item => item.a || item[0]).filter(m => m).map(m => String(m).toUpperCase().trim());
 
                 if (motsList.length > 0) {
                     initWord();
                 } else {
-                    display.innerText = "SHEET VIDE (COL A)";
+                    display.innerText = "LISTE VIDE";
                 }
             } catch (e) {
-                display.innerHTML = "ERREUR DE FLUX<br><small style='font-size:10px'>"+e.message+"</small>";
-                console.error(e);
+                display.innerText = "ERREUR RÉSEAU";
+                console.log(e);
             }
         }
 
         function initWord() {
             if (currentWordIndex >= motsList.length) {
-                document.getElementById('target-word').innerHTML = "SESSION FINIE !";
+                document.getElementById('target-word').innerText = "FIN DE SESSION";
                 return;
             }
             isTransitioning = false;
             currentCharIndex = 0;
             const word = motsList[currentWordIndex];
-            document.getElementById('target-word').innerHTML = word.split('').map(c => `<span class="char">${c}</span>`).join('');
+            const spans = word.split('').map(c => '<span class="char">' + c + '</span>').join('');
+            document.getElementById('target-word').innerHTML = spans;
         }
 
         function handleInput(letter) {
-            if (isTransitioning || !motsList[currentWordIndex]) return;
-            const currentWord =
+            if (isTransitioning) return;
+            const currentWord = motsList[currentWordIndex];
+            if (!currentWord) return;
 
+            const targetLetter = currentWord[currentCharIndex];
+            const keyElement = document.getElementById('key-' + letter);
+
+            if (letter === targetLetter) {
+                keyElement.classList.add('active');
+                const chars = document.querySelectorAll('.char');
+                if (chars[currentCharIndex]) chars[currentCharIndex].classList.add('char-done');
+                
+                currentCharIndex++;
+                if (currentCharIndex === currentWord.length) {
+                    isTransitioning = true;
+                    scoreCount++;
+                    document.getElementById('score').innerText = scoreCount;
+                    setTimeout(function() {
+                        currentWordIndex++;
+                        initWord();
+                    }, 700);
+                }
+            } else {
+                keyElement.classList.add('wrong');
+            }
+            setTimeout(function() {
+                keyElement.classList.remove('active');
+                keyElement.classList.remove('wrong');
+            }, 150);
+        }
+
+        function skipWord() {
+            if (isTransitioning) return;
+            isTransitioning = true;
+            const spans = document.querySelectorAll('.char');
+            spans.forEach((s, i) => { if (i >= currentCharIndex) s.classList.add('reveal-solution'); });
+            setTimeout(function() {
+                currentWordIndex++;
+                initWord();
+            }, 1200);
+        }
+
+        // Lancement manuel
+        buildKeyboard();
+        loadWords();
+    </script>
+</body>
+</html>
