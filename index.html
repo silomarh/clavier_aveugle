@@ -11,104 +11,119 @@
             --accent: #0a84ff;
             --success: #30d158;
             --error: #ff453a;
+            --kb-bg: #121212;
         }
 
         body {
-            font-family: -apple-system, system-ui, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg);
             color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
             height: 100vh;
             margin: 0;
-            padding: 20px 0;
-            box-sizing: border-box;
             overflow: hidden;
             touch-action: manipulation;
         }
 
         #target-word {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 2.2rem;
-            font-weight: 700;
-            text-align: center;
-            margin-top: 40px;
-            padding: 0 10px;
-            letter-spacing: 4px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            padding: 20px;
         }
 
         .char {
             color: #222;
             border-bottom: 3px solid #222;
             margin: 0 3px;
-            display: inline-block;
             min-width: 20px;
-            text-transform: uppercase;
+            text-align: center;
         }
 
         .char-done { color: var(--success); border-bottom-color: var(--success); }
         .reveal-solution { color: var(--error) !important; border-bottom-color: var(--error) !important; }
 
+        /* LE CLAVIER APPLE */
         #keyboard-container {
             width: 100%;
-            max-width: 430px;
-            padding-bottom: env(safe-area-inset-bottom, 20px);
+            background-color: var(--kb-bg);
+            padding: 8px 3px env(safe-area-inset-bottom, 12px) 3px;
+            box-sizing: border-box;
         }
 
         .row {
             display: flex;
             justify-content: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             width: 100%;
         }
 
-        /* Style iPhone : décalage des lignes */
-        #row-1 { padding: 0 5%; }
-        #row-2 { padding: 0 12% 0 3%; }
-
         .key {
             flex: 1;
-            height: 46px;
+            height: 42px; /* Taille standard iOS */
+            max-width: 36px;
             background: var(--key-bg);
-            margin: 3px;
-            border-radius: 6px;
+            margin: 0 3px;
+            border-radius: 5px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.1rem;
-            color: transparent; /* Masqué */
-            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            font-size: 1.2rem;
+            color: transparent; /* Fantôme */
+            box-shadow: 0 1px 0 rgba(0,0,0,0.3);
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Décalage spécifique ligne 2 et 3 */
+        #row-1 { padding: 0 18px; } /* Décale QSD... */
+        #row-2 { padding: 0 0; }
+        
+        /* Touches spéciales (juste pour le look iPhone) */
+        .key-special {
+            max-width: 45px;
+            background: #3a3a3c;
+            color: #fff !important;
+            font-size: 0.8rem;
         }
 
         .key.active { background: #636366; color: white !important; }
         .key.wrong { background: var(--error); color: white !important; }
 
         .footer {
-            width: 100%;
             display: flex;
             justify-content: space-between;
-            padding: 10px 25px;
-            box-sizing: border-box;
+            align-items: center;
+            padding: 5px 20px;
+            margin-top: 5px;
         }
 
-        #btn-skip { background: none; border: none; color: var(--accent); font-size: 1rem; padding: 10px; }
-        #score-display { color: #666; font-size: 0.9rem; padding: 10px; }
+        #btn-skip { background: none; border: none; color: var(--accent); font-size: 1rem; font-weight: 500; }
+        #score-display { color: #8e8e93; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <div id="target-word">INITIALISATION...</div>
+     <div id="target-word">INITIALISATION...</div>
 
     <div id="keyboard-container">
         <div class="row" id="row-0"></div>
+        
         <div class="row" id="row-1"></div>
-        <div class="row" id="row-2"></div>
+        
+        <div class="row" id="row-2">
+            <div class="key key-special">⬆️</div>
+            <div class="key key-special" onclick="skipWord()">PASS</div>
+        </div>
         
         <div class="footer">
-            <div id="score-display">Score : <span id="score">0</span></div>
-            <button id="btn-skip" onclick="skipWord()">Passer</button>
+            <div id="score-display">MOTS: <span id="score">0</span></div>
+            <button id="btn-skip" onclick="skipWord()">PASSER</button>
         </div>
     </div>
 
@@ -138,17 +153,17 @@
                     keyDiv.id = 'key-' + letter;
                     keyDiv.innerText = letter;
                     
-                    // Interaction mobile
                     keyDiv.addEventListener('touchstart', function(e) {
                         e.preventDefault();
                         handleInput(letter);
                     });
-                    // Interaction souris (secours)
-                    keyDiv.addEventListener('click', function() {
-                        handleInput(letter);
-                    });
                     
-                    rowDiv.appendChild(keyDiv);
+                    // Si c'est la ligne 3, on l'insère avant le bouton PASS
+                    if (i === 2) {
+                        rowDiv.insertBefore(keyDiv, rowDiv.lastElementChild);
+                    } else {
+                        rowDiv.appendChild(keyDiv);
+                    }
                 });
             }
         }
@@ -235,3 +250,4 @@
     </script>
 </body>
 </html>
+
