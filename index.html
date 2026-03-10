@@ -238,9 +238,9 @@
         }
 
         .char-done {
-            color: var(--success);
-            border-bottom-color: var(--success);
-            text-shadow: 0 0 8px rgba(48,209,88,0.6);
+            color: #30d158 !important;
+            border-bottom-color: #30d158 !important;
+            text-shadow: 0 0 12px rgba(48,209,88,0.9) !important;
         }
 
         .char-wrong {
@@ -805,11 +805,11 @@ function startGame() {
     document.getElementById('screen-end').style.display = 'none';
     document.getElementById('screen-game').style.display = 'flex';
     updateScoreDisplay();
-    // Délai court pour laisser le DOM se rendre avant de charger le mot
+    // Délai pour laisser le DOM se rendre avant de charger le mot
     setTimeout(() => {
         loadNextWord();
         startTimer();
-    }, 50);
+    }, 150);
 }
 
 function startTimer() {
@@ -856,8 +856,13 @@ function loadNextWord() {
     ).join('');
 }
 
+let lastInputTime = 0;
 function handleInput(letter) {
+    const now = Date.now();
+    if (now - lastInputTime < 80) return; // anti-double-fire touchstart+click
+    lastInputTime = now;
     if (isTransitioning || timeLeft <= 0) return;
+    if (!currentWord) return; // mot pas encore chargé
     const target = currentWord[currentCharIndex];
     const keyEl = document.getElementById('key-' + letter);
 
