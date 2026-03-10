@@ -229,8 +229,8 @@
         }
 
         .char {
-            color: #222;
-            border-bottom: 3px solid #222;
+            color: #555;
+            border-bottom: 3px solid #444;
             min-width: 28px;
             text-align: center;
             transition: all 0.1s;
@@ -317,16 +317,22 @@
             justify-content: center;
             margin-bottom: 10px;
             width: 100%;
+            padding: 0 4px;
         }
 
-        #row-0 { padding: 0 2px; }
-        #row-1 { padding: 0 5%; }
-        #row-2 { padding: 0 2px; }
+        /* Ligne 1 : AZERTYUIOP — pleine largeur */
+        #row-0 { padding: 0 4px; }
+        /* Ligne 2 : QSDFGHJKLM — décalage asymétrique gauche comme iPhone */
+        #row-1 { padding-left: 5%; padding-right: 3%; }
+        /* Ligne 3 : ⇧ WXCVBN' ⌫ */
+        #row-2 { padding: 0 4px; }
+        /* Ligne 4 : 123 [espace] Retour */
+        #row-3 { padding: 0 4px; margin-bottom: 0; }
 
         .key {
             flex: 1;
             height: 46px;
-            max-width: 40px;
+            max-width: 42px;
             background: var(--key-bg);
             margin: 0 3px;
             border-radius: 6px;
@@ -358,13 +364,35 @@
             box-shadow: 0 0 12px rgba(255,69,58,0.4), 0 3px 0 rgba(0,0,0,0.8);
         }
 
+        /* Touches spéciales — visibles mais non jouables */
         .key-special {
-            max-width: 55px;
             background: #2c2c2e;
             color: #aaa !important;
-            font-size: 0.75rem !important;
-            flex: 1.4;
+            font-size: 0.72rem !important;
+            flex: 1.5;
+            max-width: 56px;
             font-family: 'Share Tech Mono', monospace;
+            cursor: default;
+        }
+
+        /* Barre espace — plus large */
+        .key-space {
+            background: #2c2c2e;
+            color: #666 !important;
+            font-size: 0.65rem !important;
+            flex: 5;
+            max-width: 999px;
+            font-family: 'Share Tech Mono', monospace;
+            cursor: default;
+            letter-spacing: 0.1em;
+        }
+
+        /* Apostrophe — même style que lettre mais non jouable */
+        .key-apostrophe {
+            background: #2c2c2e;
+            color: #aaa !important;
+            font-size: 1rem !important;
+            cursor: default;
         }
 
         .footer-game {
@@ -540,8 +568,12 @@
         <div class="row" id="row-0"></div>
         <div class="row" id="row-1"></div>
         <div class="row" id="row-2">
-            <div class="key key-special">⬆️</div>
-            <div class="key key-special" id="btn-skip" onclick="skipWord()">PASS</div>
+            <!-- ⇧ inséré par JS avant les lettres, ⌫ et ' après -->
+        </div>
+        <div class="row" id="row-3">
+            <div class="key key-special">123</div>
+            <div class="key key-space">espace</div>
+            <div class="key key-special">retour</div>
         </div>
         <div class="footer-game">
             <div id="word-counter">MOT 1</div>
@@ -644,8 +676,16 @@ const RANKS = [
 ];
 
 const LAYOUTS = {
-    fr: [["A","Z","E","R","T","Y","U","I","O","P"],["Q","S","D","F","G","H","J","K","L","M"],["W","X","C","V","B","N"]],
-    en: [["Q","W","E","R","T","Y","U","I","O","P"],["A","S","D","F","G","H","J","K","L"],["Z","X","C","V","B","N","M"]]
+    fr: {
+        r0: ["A","Z","E","R","T","Y","U","I","O","P"],
+        r1: ["Q","S","D","F","G","H","J","K","L","M"],
+        r2: ["W","X","C","V","B","N"]
+    },
+    en: {
+        r0: ["Q","W","E","R","T","Y","U","I","O","P"],
+        r1: ["A","S","D","F","G","H","J","K","L"],
+        r2: ["Z","X","C","V","B","N","M"]
+    }
 };
 
 // ========== STATE ==========
@@ -675,14 +715,31 @@ function seededRandom(s) {
     };
 }
 
+function shuffle(arr, rng) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
 function buildWordPool(s) {
     const rng = seededRandom(s);
     const w = WORDS[lang];
+    // Shuffler chaque niveau sans répétition
+    const easyShuffled  = shuffle(w.easy,   rng).map(word => ({ word, level: 1 }));
+    const mediumShuffled = shuffle(w.medium, rng).map(word => ({ word, level: 2 }));
+    const hardShuffled  = shuffle(w.hard,   rng).map(word => ({ word, level: 3 }));
+    // Intercaler : 2 easy, 1 medium, puis alterner medium/hard
     const pool = [];
-    // 20s facile, 20s moyen, 20s difficile — on génère assez de mots
-    for (let i = 0; i < 15; i++) pool.push({ word: w.easy[Math.floor(rng() * w.easy.length)], level: 1 });
-    for (let i = 0; i < 15; i++) pool.push({ word: w.medium[Math.floor(rng() * w.medium.length)], level: 2 });
-    for (let i = 0; i < 15; i++) pool.push({ word: w.hard[Math.floor(rng() * w.hard.length)], level: 3 });
+    let ei = 0, mi = 0, hi = 0;
+    // Phase 1 (0-20s environ) : easy
+    while (ei < easyShuffled.length) pool.push(easyShuffled[ei++]);
+    // Phase 2 (20-40s) : medium
+    while (mi < mediumShuffled.length) pool.push(mediumShuffled[mi++]);
+    // Phase 3 (40-60s) : hard
+    while (hi < hardShuffled.length) pool.push(hardShuffled[hi++]);
     return pool;
 }
 
@@ -694,23 +751,46 @@ function selectLang(l) {
 }
 
 // ========== CLAVIER ==========
+function createLetterKey(letter) {
+    const key = document.createElement('div');
+    key.className = 'key';
+    key.id = 'key-' + letter;
+    key.dataset.letter = letter;
+    key.addEventListener('touchstart', e => { e.preventDefault(); handleInput(letter); }, { passive: false });
+    key.addEventListener('click', () => handleInput(letter));
+    return key;
+}
+
 function buildKeyboard() {
     const layout = LAYOUTS[lang];
-    for (let i = 0; i < 3; i++) {
-        const row = document.getElementById('row-' + i);
-        // Vider sauf touches spéciales
-        Array.from(row.querySelectorAll('.key:not(.key-special)')).forEach(k => k.remove());
-        layout[i].forEach(letter => {
-            const key = document.createElement('div');
-            key.className = 'key';
-            key.id = 'key-' + letter;
-            key.dataset.letter = letter;
-            key.addEventListener('touchstart', e => { e.preventDefault(); handleInput(letter); }, { passive: false });
-            key.addEventListener('click', () => handleInput(letter));
-            if (i === 2) row.insertBefore(key, row.lastElementChild);
-            else row.appendChild(key);
-        });
-    }
+
+    const row0 = document.getElementById('row-0');
+    row0.innerHTML = '';
+    layout.r0.forEach(l => row0.appendChild(createLetterKey(l)));
+
+    const row1 = document.getElementById('row-1');
+    row1.innerHTML = '';
+    layout.r1.forEach(l => row1.appendChild(createLetterKey(l)));
+
+    const row2 = document.getElementById('row-2');
+    row2.innerHTML = '';
+
+    const shift = document.createElement('div');
+    shift.className = 'key key-special';
+    shift.innerText = '⇧';
+    row2.appendChild(shift);
+
+    layout.r2.forEach(l => row2.appendChild(createLetterKey(l)));
+
+    const apos = document.createElement('div');
+    apos.className = 'key key-apostrophe';
+    apos.innerText = "'";
+    row2.appendChild(apos);
+
+    const backspace = document.createElement('div');
+    backspace.className = 'key key-special';
+    backspace.innerText = '⌫';
+    row2.appendChild(backspace);
 }
 
 // ========== DÉMARRAGE ==========
@@ -725,8 +805,11 @@ function startGame() {
     document.getElementById('screen-end').style.display = 'none';
     document.getElementById('screen-game').style.display = 'flex';
     updateScoreDisplay();
-    loadNextWord();
-    startTimer();
+    // Délai court pour laisser le DOM se rendre avant de charger le mot
+    setTimeout(() => {
+        loadNextWord();
+        startTimer();
+    }, 50);
 }
 
 function startTimer() {
@@ -769,7 +852,7 @@ function loadNextWord() {
 
     const container = document.getElementById('target-word');
     container.innerHTML = currentWord.split('').map((c, i) =>
-        `<span class="char" id="char-${i}">${c}</span>`
+        `<span class="char" id="char-${i}" style="color:#666;border-bottom:3px solid #555;">${c}</span>`
     ).join('');
 }
 
@@ -802,16 +885,22 @@ function handleInput(letter) {
             setTimeout(() => loadNextWord(), isPerfect ? 700 : 400);
         }
     } else {
-        // Erreur
-        keyEl && keyEl.classList.add('wrong');
+        // Erreur — jamais de blocage, animation rapide
+        if (keyEl) {
+            keyEl.classList.add('wrong');
+            setTimeout(() => keyEl.classList.remove('wrong'), 120);
+        }
         const charEl = document.getElementById('char-' + currentCharIndex);
-        charEl && charEl.classList.add('char-wrong');
-        setTimeout(() => charEl && charEl.classList.remove('char-wrong'), 200);
+        if (charEl) {
+            charEl.classList.add('char-wrong');
+            setTimeout(() => charEl.classList.remove('char-wrong'), 200);
+        }
         wordErrors++;
-        score = Math.max(0, score - 1);
+        score--;
         combo = 0;
         showFloatScore('-1', false);
         updateScoreDisplay();
+        return; // sortir proprement, sans tomber dans le setTimeout du bas
     }
 
     setTimeout(() => keyEl && keyEl.classList.remove('correct', 'wrong'), 120);
@@ -900,14 +989,23 @@ function endGame() {
 
 // ========== REPLAY ==========
 function resetGame() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    timeLeft = 60;
+    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0;
+    currentCharIndex = 0; wordErrors = 0; isTransitioning = false;
+    poolIndex = 0;
+    document.getElementById('ambient').style.background = '';
+    document.getElementById('timer-display').className = '';
     document.getElementById('screen-end').style.display = 'none';
+    document.getElementById('screen-game').style.display = 'none';
     document.getElementById('screen-home').style.display = 'flex';
 }
 
 // ========== CLAVIER PHYSIQUE ==========
 document.addEventListener('keydown', e => {
     const letter = e.key.toUpperCase();
-    const layout = LAYOUTS[lang].flat();
+    const layout = [...LAYOUTS[lang].r0, ...LAYOUTS[lang].r1, ...LAYOUTS[lang].r2];
     if (layout.includes(letter)) handleInput(letter);
 });
 
@@ -927,4 +1025,3 @@ window.addEventListener('load', () => {
 </script>
 </body>
 </html>
-
