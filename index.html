@@ -701,6 +701,9 @@ let currentCharIndex = 0;
 let wordErrors = 0;
 let timerInterval = null;
 let seed = Math.random().toString(36).substr(2, 8);
+let maxScoreReached = 0;
+let wordPiles = { 1: [], 2: [], 3: [] };
+let pileIndexes = { 1: 0, 2: 0, 3: 0 };
 
 // ========== SEEDED RANDOM ==========
 function seededRandom(s) {
@@ -721,23 +724,14 @@ function shuffle(arr, rng) {
     return a;
 }
 
-function buildWordPool(s) {
-    const rng = seededRandom(s);
-    const w = WORDS[lang];
-    // Shuffler chaque niveau sans répétition
-    const easyShuffled  = shuffle(w.easy,   rng).map(word => ({ word, level: 1 }));
-    const mediumShuffled = shuffle(w.medium, rng).map(word => ({ word, level: 2 }));
-    const hardShuffled  = shuffle(w.hard,   rng).map(word => ({ word, level: 3 }));
-    // Intercaler : 2 easy, 1 medium, puis alterner medium/hard
-    const pool = [];
-    let ei = 0, mi = 0, hi = 0;
-    // Phase 1 (0-20s environ) : easy
-    while (ei < easyShuffled.length) pool.push(easyShuffled[ei++]);
-    // Phase 2 (20-40s) : medium
-    while (mi < mediumShuffled.length) pool.push(mediumShuffled[mi++]);
-    // Phase 3 (40-60s) : hard
-    while (hi < hardShuffled.length) pool.push(hardShuffled[hi++]);
-    return pool;
+function initWordPiles() {
+    // Shuffler les 3 piles indépendamment au démarrage
+    [1, 2, 3].forEach(level => {
+        const w = WORDS[lang];
+        const source = level === 1 ? w.easy : level === 2 ? w.medium : w.hard;
+        wordPiles[level] = shuffle([...source], () => Math.random());
+        pileIndexes[level] = 0;
+    });
 }
 
 // ========== UI ACCUEIL ==========
@@ -801,7 +795,8 @@ function buildKeyboard() {
 // ========== DÉMARRAGE ==========
 function startGame() {
     seed = Math.random().toString(36).substr(2, 8);
-    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0;
+    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0; maxScoreReached = 0;
+    initWordPiles();
     timeLeft = 60;
     buildKeyboard();
     document.getElementById('screen-home').style.display = 'none';
@@ -841,15 +836,19 @@ function updateTimerDisplay() {
 
 // ========== DIFFICULTÉ PAR SCORE ==========
 function getDiffLevel() {
-    if (score < 10) return 1;
-    if (score < 25) return 2;
+    // Niveau basé sur le score MAX atteint — ne redescend jamais
+    if (maxScoreReached < 10) return 1;
+    if (maxScoreReached < 25) return 2;
     return 3;
 }
 
 function getWordForLevel(level) {
-    const w = WORDS[lang];
-    const pool = level === 1 ? w.easy : level === 2 ? w.medium : w.hard;
-    return pool[Math.floor(Math.random() * pool.length)];
+    // Piocher dans la pile shufflée — reshuffler si épuisée
+    if (pileIndexes[level] >= wordPiles[level].length) {
+        wordPiles[level] = shuffle([...wordPiles[level]], () => Math.random());
+        pileIndexes[level] = 0;
+    }
+    return wordPiles[level][pileIndexes[level]++];
 }
 
 // ========== MOT ==========
@@ -886,6 +885,7 @@ function handleInput(letter) {
         if (charEl) charEl.classList.add('char-done');
         currentCharIndex++;
         score++;
+        if (score > maxScoreReached) maxScoreReached = score;
         combo++;
         soundCorrect();
         showFloatScore('+1', true);
@@ -1049,8 +1049,9 @@ function resetGame() {
     clearInterval(timerInterval);
     timerInterval = null;
     timeLeft = 60;
-    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0;
-    currentCharIndex = 0; wordErrors = 0;
+    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0; maxScoreReached = 0;
+    initWordPiles();
+    currentCharIndex = 0; wordErrors = 0; maxScoreReached = 0;
     document.getElementById('ambient').style.background = '';
     document.getElementById('timer-display').className = '';
     document.getElementById('screen-end').style.display = 'none';
