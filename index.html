@@ -699,10 +699,7 @@ let totalBonus = 0;
 let currentWord = '';
 let currentCharIndex = 0;
 let wordErrors = 0;
-let isTransitioning = false;
 let timerInterval = null;
-let wordPool = [];
-let poolIndex = 0;
 let seed = Math.random().toString(36).substr(2, 8);
 
 // ========== SEEDED RANDOM ==========
@@ -804,8 +801,6 @@ function buildKeyboard() {
 // ========== DÉMARRAGE ==========
 function startGame() {
     seed = Math.random().toString(36).substr(2, 8);
-    wordPool = buildWordPool(seed);
-    poolIndex = 0;
     score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0;
     timeLeft = 60;
     buildKeyboard();
@@ -844,18 +839,29 @@ function updateTimerDisplay() {
     }
 }
 
+// ========== DIFFICULTÉ PAR SCORE ==========
+function getDiffLevel() {
+    if (score < 10) return 1;
+    if (score < 25) return 2;
+    return 3;
+}
+
+function getWordForLevel(level) {
+    const w = WORDS[lang];
+    const pool = level === 1 ? w.easy : level === 2 ? w.medium : w.hard;
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // ========== MOT ==========
 function loadNextWord() {
-    if (poolIndex >= wordPool.length) poolIndex = 0;
-    const entry = wordPool[poolIndex++];
-    currentWord = entry.word;
+    const level = getDiffLevel();
+    currentWord = getWordForLevel(level);
     currentCharIndex = 0;
     wordErrors = 0;
-    isTransitioning = false;
     wordCount++;
 
     const diffLabels = ['', 'NIVEAU 1 — LETTRES COURANTES', 'NIVEAU 2 — LETTRES MIXTES', 'NIVEAU 3 — LETTRES RARES ⚡'];
-    document.getElementById('diff-label').innerText = diffLabels[entry.level] || '';
+    document.getElementById('diff-label').innerText = diffLabels[level];
     document.getElementById('word-counter').innerText = `MOT ${wordCount}`;
 
     const container = document.getElementById('target-word');
@@ -865,36 +871,45 @@ function loadNextWord() {
 }
 
 function handleInput(letter) {
-    if (isTransitioning || timeLeft <= 0) return;
-    if (!currentWord) return;
+    if (timeLeft <= 0) return;
+    if (!currentWord || currentCharIndex >= currentWord.length) return;
     const target = currentWord[currentCharIndex];
     const keyEl = document.getElementById('key-' + letter);
 
     if (letter === target) {
         // Correct
-        keyEl && keyEl.classList.add('correct');
-        document.getElementById('char-' + currentCharIndex).classList.add('char-done');
+        if (keyEl) {
+            keyEl.classList.add('correct');
+            setTimeout(() => keyEl.classList.remove('correct'), 120);
+        }
+        const charEl = document.getElementById('char-' + currentCharIndex);
+        if (charEl) charEl.classList.add('char-done');
         currentCharIndex++;
         score++;
         combo++;
+        soundCorrect();
         showFloatScore('+1', true);
         updateScoreDisplay();
 
         if (currentCharIndex === currentWord.length) {
-            // Mot terminé
-            isTransitioning = true;
+            // Mot terminé — chargement immédiat du suivant
             const isPerfect = wordErrors === 0;
             if (isPerfect) {
                 perfectCount++;
                 timeLeft += 5;
                 totalBonus += 5;
+                soundPerfect();
+                soundBonus();
                 showBonusFlash();
                 pulseAmbientGreen();
+            } else {
+                soundWordDone();
             }
-            setTimeout(() => loadNextWord(), isPerfect ? 700 : 400);
+            // Délai court juste pour l'animation visuelle
+            setTimeout(() => loadNextWord(), isPerfect ? 600 : 300);
         }
     } else {
-        // Erreur — jamais de blocage, animation rapide
+        // Erreur
         if (keyEl) {
             keyEl.classList.add('wrong');
             setTimeout(() => keyEl.classList.remove('wrong'), 120);
@@ -907,26 +922,59 @@ function handleInput(letter) {
         wordErrors++;
         score--;
         combo = 0;
+        soundError();
         showFloatScore('-1', false);
         updateScoreDisplay();
-        return; // sortir proprement, sans tomber dans le setTimeout du bas
     }
-
-    setTimeout(() => keyEl && keyEl.classList.remove('correct', 'wrong'), 120);
 }
 
 function skipWord() {
-    if (isTransitioning || timeLeft <= 0) return;
-    isTransitioning = true;
+    if (timeLeft <= 0) return;
     combo = 0;
     updateScoreDisplay();
-    // Révéler lettres restantes
     for (let i = currentCharIndex; i < currentWord.length; i++) {
         const el = document.getElementById('char-' + i);
         if (el) el.classList.add('char-reveal');
     }
-    setTimeout(() => loadNextWord(), 800);
+    setTimeout(() => loadNextWord(), 600);
 }
+
+// ========== SONS ==========
+let audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function playSound(freq, duration, type = 'sine', gainVal = 0.3, freqEnd = null) {
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, ctx.currentTime + duration);
+        gain.gain.setValueAtTime(gainVal, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+    } catch(e) {}
+}
+
+function soundCorrect()  { playSound(600, 0.06, 'square', 0.15, 900); }
+function soundError()    { playSound(180, 0.08, 'sawtooth', 0.12, 120); }
+function soundWordDone() {
+    playSound(700, 0.1, 'sine', 0.2);
+    setTimeout(() => playSound(1050, 0.15, 'sine', 0.2), 80);
+}
+function soundPerfect() {
+    playSound(700,  0.1, 'sine', 0.25);
+    setTimeout(() => playSound(880,  0.1, 'sine', 0.25), 90);
+    setTimeout(() => playSound(1050, 0.2, 'sine', 0.3),  180);
+}
+function soundBonus() { playSound(400, 0.3, 'sine', 0.2, 1200); }
 
 // ========== AFFICHAGE ==========
 function updateScoreDisplay() {
@@ -1002,8 +1050,7 @@ function resetGame() {
     timerInterval = null;
     timeLeft = 60;
     score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0;
-    currentCharIndex = 0; wordErrors = 0; isTransitioning = false;
-    poolIndex = 0;
+    currentCharIndex = 0; wordErrors = 0;
     document.getElementById('ambient').style.background = '';
     document.getElementById('timer-display').className = '';
     document.getElementById('screen-end').style.display = 'none';
