@@ -1179,7 +1179,8 @@ async function sendScoreToSupabase(finalScore, finalAccuracy) {
                 score: finalScore, 
                 accuracy: finalAccuracy,
                 lang: lang,
-                seed: seed
+                seed: seed,
+                appli: isInStandaloneMode
             }]);
         if (error) console.error('Supabase error:', error.message);
         else console.log('Score saved!');
