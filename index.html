@@ -983,20 +983,22 @@ function selectLang(l) {
     //});
   //  return key;
 //}
-    function createLetterKey(char, container) {
-    if (char === null) {
+function createLetterKey(letter) {
+    if (letter === null) {
         const spacer = document.createElement('div');
         spacer.className = 'key spacer';
-        container.appendChild(spacer);
-        return;
+        return spacer; // ON RETOURNE L'ÉLÉMENT
     }
+
     const key = document.createElement('div');
     key.className = 'key';
-    key.setAttribute('data-key', char);
+    key.id = 'key-' + letter;
+    key.dataset.letter = letter;
 
-    // REMPLACEMENT DU CLICK PAR POINTERDOWN POUR MOBILE
-    key.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); 
+    // OPTIMISATION POINTERDOWN
+    key.addEventListener('pointerdown', e => {
+        // Empêche le comportement par défaut (zoom/scroll) sur mobile
+        if (e.pointerType === 'touch') e.preventDefault();
         
         // Effet visuel immédiat (Glow)
         key.style.transition = 'none';
@@ -1009,10 +1011,10 @@ function selectLang(l) {
             key.style.background = '';
         }, 150);
 
-        handleInput(char); // Ta fonction de logique de jeu
+        handleInput(letter);
     });
 
-    container.appendChild(key);
+    return key; // CRUCIAL : ON RETOURNE LA TOUCHE
 }
 
 function buildKeyboard() {
