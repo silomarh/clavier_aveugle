@@ -10,6 +10,9 @@
   gtag('js', new Date());
   gtag('config', 'G-F6RYJG72PZ');
 </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     
      <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -848,12 +851,27 @@ let perfectCount = 0;
 let totalBonus = 0;
 let currentWord = '';
 let currentCharIndex = 0;
+let totalAttempts = 0;
 let wordErrors = 0;
 let timerInterval = null;
 let seed = Math.random().toString(36).substr(2, 8);
 let maxScoreReached = 0;
+let correctLetters = 0;
 let wordPiles = { 1: [], 2: [], 3: [] };
 let pileIndexes = { 1: 0, 2: 0, 3: 0 };
+
+// Générateur de matricule (ex: SNIPER-A1B2)
+function generateSniperId() {
+    let id = localStorage.getItem('fasterty_sniper_id');
+    if (!id) {
+        id = 'SNIPER-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+        localStorage.setItem('fasterty_sniper_id', id);
+    }
+    return id;
+}
+
+const PLAYER_ID = generateSniperId();
+console.log("Logged as:", PLAYER_ID);
 
 // ========== SEEDED RANDOM ==========
 function seededRandom(s) {
@@ -1071,7 +1089,8 @@ function buildKeyboard() {
 // ========== DÉMARRAGE ==========
 function startGame() {
     seed = Math.random().toString(36).substr(2, 8);
-    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0; maxScoreReached = 0;
+    score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0; maxScoreReached = 0;correctLetters = 0;
+    totalAttempts = 0;
     initWordPiles();
     timeLeft = 60;
     buildKeyboard();
@@ -1149,7 +1168,7 @@ function handleInput(letter) {
     if (!currentWord || currentCharIndex >= currentWord.length) return;
     const target = currentWord[currentCharIndex];
     const keyEl = document.getElementById('key-' + letter);
-
+    totalAttempts++;
     if (letter === target) {
         // Correct
         if (keyEl) {
@@ -1160,6 +1179,7 @@ function handleInput(letter) {
         if (charEl) charEl.classList.add('char-done');
         currentCharIndex++;
         score++;
+        correctLetters++;
         if (score > maxScoreReached) maxScoreReached = score;
         combo++;
         soundCorrect();
@@ -1314,7 +1334,14 @@ function endGame() {
         scoreEl.innerText = displayed;
         if (displayed >= target) clearInterval(counter);
     }, 40);
+const accuracy = totalAttempts > 0 
+        ? Math.round((correctLetters / totalAttempts) * 100) 
+        : 0;
 
+    console.log(`Résultats : Score ${score} | Précision ${accuracy}%`);
+
+    // Envoi des deux données à Supabase
+    sendScoreToSupabase(score, accuracy);
     // WhatsApp
     const url = window.location.origin + window.location.pathname + `?seed=${seed}&lang=${lang}`;
     const msg = I18N[lang].wa_msg(url, score);
@@ -1328,7 +1355,7 @@ function resetGame() {
     timeLeft = 60;
     score = 0; combo = 0; wordCount = 0; perfectCount = 0; totalBonus = 0; maxScoreReached = 0;
     initWordPiles();
-    currentCharIndex = 0; wordErrors = 0; maxScoreReached = 0;
+    currentCharIndex = 0; wordErrors = 0; maxScoreReached = 0;  correctLetters = 0; totalAttempts = 0;
     document.getElementById('ambient').style.background = '';
     document.getElementById('timer-display').className = '';
     document.getElementById('screen-end').style.display = 'none';
@@ -1362,6 +1389,37 @@ window.addEventListener('load', () => {
         sub.style.color = '#ff9f0a';
     }
 });
+    // 1. Initialisation (Remplace par tes vraies clés)
+const supabaseUrl = 'https://your-project.supabase.co';
+const supabaseKey = 'your-anon-key';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+// 2. Ton matricule Sniper
+const PLAYER_ID = localStorage.getItem('fasterty_id') || 'SNIPER-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+localStorage.setItem('fasterty_id', PLAYER_ID);
+
+// 3. LA FONCTION (Bien définie ici)
+async function sendScoreToSupabase(finalScore, finalAccuracy) {
+    console.log("Tentative d'envoi pour :", PLAYER_ID);
+    
+    const { data, error } = await supabaseClient
+        .from('leaderboard')
+        .insert([
+            { 
+                sniper_id: PLAYER_ID, 
+                score: finalScore, 
+                accuracy: finalAccuracy,
+                lang: lang,
+                seed: seed // Assure-toi que ces variables existent
+            }
+        ]);
+
+    if (error) {
+        console.error('Erreur Supabase:', error.message);
+    } else {
+        console.log('Score enregistré !');
+    }
+}
 </script>
 </body>
 </html>
