@@ -679,6 +679,59 @@
             margin: 8px 0 4px 0;
         }
 
+        /* Bouton installer */
+        .btn-install {
+            background: linear-gradient(135deg, #0a84ff, #bf5af2);
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            width: 100%;
+            display: none;
+        }
+        .btn-install:active { opacity: 0.8; }
+
+        /* Modal install */
+        .modal-install {
+            border-color: rgba(10,132,255,0.3) !important;
+            width: 320px !important;
+            text-align: center;
+        }
+
+        .install-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            margin: 10px 0;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .install-step-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+        }
+
+        .install-step-text {
+            font-size: 0.78rem;
+            color: #ccc;
+            line-height: 1.4;
+            letter-spacing: 0.03em;
+        }
+
+        .install-step-text strong {
+            color: white;
+            display: block;
+            margin-bottom: 2px;
+        }
+
         /* Contact */
         .btn-contact {
             background: none;
@@ -855,11 +908,78 @@
         </div>
     </div>
     <div class="end-buttons">
+        <button class="btn-install" id="btn-install" onclick="handleInstall()">📲 INSTALLER L'APP</button>
         <button class="btn-whatsapp" id="btn-wa">📲 DÉFIER SUR WHATSAPP</button>
         <button class="btn-leaderboard" onclick="showLeaderboard()">🏆 CLASSEMENT</button>
         <button class="btn-replay" onclick="resetGame()">↺ REJOUER</button>
     </div>
     <button class="btn-contact" onclick="document.getElementById('contact-modal').style.display='flex'">📩 Contact &amp; Suggestions</button>
+</div>
+
+<!-- MODAL INSTALL iOS -->
+<div id="install-modal" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box modal-install">
+        <div class="lb-title">📲 INSTALLER</div>
+        <div class="lb-subtitle">Ajoute Fasterty à ton écran d'accueil</div>
+
+        <div class="install-step">
+            <div class="install-step-icon">⬆️</div>
+            <div class="install-step-text">
+                <strong>Étape 1 — Partager</strong>
+                Appuie sur l'icône Partager en bas de Safari
+            </div>
+        </div>
+        <div class="install-step">
+            <div class="install-step-icon">➕</div>
+            <div class="install-step-text">
+                <strong>Étape 2 — Sur l'écran d'accueil</strong>
+                Fais défiler et appuie sur "Sur l'écran d'accueil"
+            </div>
+        </div>
+        <div class="install-step">
+            <div class="install-step-icon">✅</div>
+            <div class="install-step-text">
+                <strong>Étape 3 — Ajouter</strong>
+                Appuie sur "Ajouter" en haut à droite
+            </div>
+        </div>
+
+        <button class="btn-close" style="margin-top:14px;width:100%;" 
+            onclick="document.getElementById('install-modal').style.display='none'">FERMER</button>
+    </div>
+</div>
+
+<!-- MODAL INSTALL iOS EN -->
+<div id="install-modal-en" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box modal-install">
+        <div class="lb-title">📲 INSTALL</div>
+        <div class="lb-subtitle">Add Fasterty to your home screen</div>
+
+        <div class="install-step">
+            <div class="install-step-icon">⬆️</div>
+            <div class="install-step-text">
+                <strong>Step 1 — Share</strong>
+                Tap the Share icon at the bottom of Safari
+            </div>
+        </div>
+        <div class="install-step">
+            <div class="install-step-icon">➕</div>
+            <div class="install-step-text">
+                <strong>Step 2 — Add to Home Screen</strong>
+                Scroll down and tap "Add to Home Screen"
+            </div>
+        </div>
+        <div class="install-step">
+            <div class="install-step-icon">✅</div>
+            <div class="install-step-text">
+                <strong>Step 3 — Add</strong>
+                Tap "Add" in the top right corner
+            </div>
+        </div>
+
+        <button class="btn-close" style="margin-top:14px;width:100%;" 
+            onclick="document.getElementById('install-modal-en').style.display='none'">CLOSE</button>
+    </div>
 </div>
 
 <!-- MODAL LEADERBOARD -->
@@ -923,7 +1043,7 @@ const WORDS = {
             "BOXEZ","QUARTZ","BIZARRE","ZIGZAG","YAKUZA","WIZARD","EXHIBER",
             "ZOMBIE","BLIZZARD","WAGONNET","XYLOPHONE","QUARTZY","SAXO","SEXY",
             "BLIZZARD", "BOUQUINEZ","KLAXONNEZ","VAQUEZ","HYDRES","GAZIFIER", "JONQUILLE",
-            "BRUT","QUOI","WEB","XRAY","YOGA","ZEBRE","BANQUE",
+            "BRUT","QUOI","WEB","XRAY","YOGA","ZÈBRE","BANQUE",
             "CIRQUE","EXAMEN","JOYEUX","WHISKY","ZIGZAG","AQUATIQUE",
             "BOXEUR","CYLINDRE","QUARTZ","MAXIMUM","WAGON"
         ]
@@ -1021,6 +1141,29 @@ function generateSniperId() {
 
 const PLAYER_ID = generateSniperId();
 console.log("Logged as:", PLAYER_ID);
+
+// ========== PWA INSTALL ==========
+let deferredPrompt = null;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+});
+
+function handleInstall() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+            deferredPrompt = null;
+            document.getElementById('btn-install').style.display = 'none';
+        });
+    } else if (isIOS) {
+        const modalId = lang === 'en' ? 'install-modal-en' : 'install-modal';
+        document.getElementById(modalId).style.display = 'flex';
+    }
+}
 
 // ========== SUPABASE ==========
 const _supabaseUrl = 'https://mfcawmmafaqrenebffcb.supabase.co';
@@ -1493,6 +1636,14 @@ function endGame() {
 
     // Animer score
     document.getElementById('screen-end').style.display = 'flex';
+    // Bouton install — afficher si iOS ou Android prompt dispo
+    const installBtn = document.getElementById('btn-install');
+    if (installBtn && !isInStandaloneMode) {
+        if (deferredPrompt || isIOS) {
+            installBtn.style.display = 'block';
+            installBtn.innerText = lang === 'en' ? '📲 INSTALL APP' : '📲 INSTALLER APP';
+        }
+    }
     const endIdEl = document.getElementById('end-player-id-val');
     if (endIdEl) endIdEl.innerText = PLAYER_ID;
     document.getElementById('end-rank-value').innerText = rank.label;
