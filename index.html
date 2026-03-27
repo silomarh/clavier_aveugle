@@ -966,22 +966,53 @@ function selectLang(l) {
 }
 
 // ========== CLAVIER ==========
-function createLetterKey(letter) {
+//function createLetterKey(letter) {
+    //const key = document.createElement('div');
+    //key.className = 'key';
+    //key.id = 'key-' + letter;
+    //key.dataset.letter = letter;
+    //let touched = false;
+    //key.addEventListener('touchstart', e => {
+        //e.preventDefault();
+        //touched = true;
+      //  handleInput(letter);
+    //}, { passive: false });
+    //key.addEventListener('click', () => {
+        //if (touched) { touched = false; return; }
+      //  handleInput(letter);
+    //});
+  //  return key;
+//}
+    function createLetterKey(char, container) {
+    if (char === null) {
+        const spacer = document.createElement('div');
+        spacer.className = 'key spacer';
+        container.appendChild(spacer);
+        return;
+    }
     const key = document.createElement('div');
     key.className = 'key';
-    key.id = 'key-' + letter;
-    key.dataset.letter = letter;
-    let touched = false;
-    key.addEventListener('touchstart', e => {
-        e.preventDefault();
-        touched = true;
-        handleInput(letter);
-    }, { passive: false });
-    key.addEventListener('click', () => {
-        if (touched) { touched = false; return; }
-        handleInput(letter);
+    key.setAttribute('data-key', char);
+
+    // REMPLACEMENT DU CLICK PAR POINTERDOWN POUR MOBILE
+    key.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); 
+        
+        // Effet visuel immédiat (Glow)
+        key.style.transition = 'none';
+        key.style.boxShadow = '0 0 20px #00D1FF';
+        key.style.background = 'rgba(0, 209, 255, 0.3)';
+        
+        setTimeout(() => {
+            key.style.transition = '0.4s';
+            key.style.boxShadow = '';
+            key.style.background = '';
+        }, 150);
+
+        handleInput(char); // Ta fonction de logique de jeu
     });
-    return key;
+
+    container.appendChild(key);
 }
 
 function buildKeyboard() {
