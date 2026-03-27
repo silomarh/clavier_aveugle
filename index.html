@@ -645,12 +645,38 @@
             letter-spacing: 0.1em;
         }
 
-        .lb-player-id {
-            font-size: 0.6rem;
-            color: #333;
+        /* ID joueur — style unifié partout */
+        .player-id-tag {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: #ff9f0a;
+            letter-spacing: 0.12em;
             text-align: center;
+            background: rgba(255,159,10,0.08);
+            border: 1px solid rgba(255,159,10,0.25);
+            border-radius: 6px;
+            padding: 4px 10px;
+            display: inline-block;
+        }
+
+        .lb-player-id {
             margin-top: 10px;
+            text-align: center;
+        }
+
+        /* ID sur écran jeu — discret mais visible */
+        #game-player-id {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            color: rgba(255,159,10,0.5);
             letter-spacing: 0.1em;
+            text-align: center;
+            padding: 2px 0 4px 0;
+        }
+
+        /* ID sur écran fin */
+        #end-player-id {
+            margin: 8px 0 4px 0;
         }
 
         /* Contact */
@@ -798,12 +824,14 @@
             <div id="word-counter">MOT 1</div>
             <div style="font-size:0.65rem; color: var(--muted); letter-spacing:0.05em;">MOT PARFAIT → <span style="color:var(--success)">+5s</span></div>
         </div>
+        <div id="game-player-id"></div>
     </div>
 </div>
 
 <!-- ========== ÉCRAN FIN ========== -->
 <div id="screen-end">
     <div class="end-ghost" id="end-ghost">⚡</div>
+    <div id="end-player-id"><span class="player-id-tag" id="end-player-id-val"></span></div>
     <div class="end-rank">Rang</div>
     <div class="end-rank-value" id="end-rank-value">—</div>
     <div class="end-score-label">SCORE FINAL</div>
@@ -841,7 +869,7 @@
         <div class="lb-subtitle" id="lb-subtitle">TOP 30 — TOUS TEMPS</div>
         <div id="lb-content" class="lb-loading">Chargement...</div>
         <div id="lb-rank-outside" class="lb-rank-outside" style="display:none"></div>
-        <div class="lb-player-id" id="lb-player-id"></div>
+        <div class="lb-player-id"><span class="player-id-tag" id="lb-player-id"></span></div>
         <button class="btn-close" style="margin-top:12px;width:100%;" onclick="document.getElementById('leaderboard-modal').style.display='none'">FERMER</button>
     </div>
 </div>
@@ -1241,6 +1269,9 @@ function startGame() {
     document.getElementById('screen-home').style.display = 'none';
     document.getElementById('screen-end').style.display = 'none';
     document.getElementById('screen-game').style.display = 'flex';
+    // Afficher ID joueur sur écran jeu
+    const gameIdEl = document.getElementById('game-player-id');
+    if (gameIdEl) gameIdEl.innerText = PLAYER_ID;
     updateScoreDisplay();
     // Délai pour laisser le DOM se rendre avant de charger le mot
     setTimeout(() => {
@@ -1462,6 +1493,8 @@ function endGame() {
 
     // Animer score
     document.getElementById('screen-end').style.display = 'flex';
+    const endIdEl = document.getElementById('end-player-id-val');
+    if (endIdEl) endIdEl.innerText = PLAYER_ID;
     document.getElementById('end-rank-value').innerText = rank.label;
     document.getElementById('end-rank-value').style.color = rank.color;
     document.getElementById('end-words').innerText = wordCount;
@@ -1498,7 +1531,7 @@ async function showLeaderboard() {
     modal.style.display = 'flex';
     content.innerHTML = '<div class="lb-loading">⏳ Chargement...</div>';
     rankOutside.style.display = 'none';
-    playerIdEl.innerText = 'Ton ID : ' + PLAYER_ID;
+    playerIdEl.innerText = PLAYER_ID;
 
     try {
         // Récupérer tous les scores, dédupliquer par sniper_id (meilleur score)
