@@ -370,11 +370,13 @@
             user-select: none;
         }
 
-        .key:active, .key.pressed {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.8);
-            background: #3a3a3c;
-        }
+.key:active, .key.pressed {
+    transform: translateY(2px);
+    /* Le néon bleu remplace le gris */
+    background: rgba(0, 209, 255, 0.4) !important; 
+    box-shadow: 0 0 15px #00D1FF, 0 1px 0 rgba(0,0,0,0.8) !important;
+    border-color: #00D1FF;
+}
 
         .key.correct {
             background: rgba(48,209,88,0.3) !important;
@@ -984,37 +986,34 @@ function selectLang(l) {
   //  return key;
 //}
 function createLetterKey(letter) {
-    if (letter === null) {
-        const spacer = document.createElement('div');
-        spacer.className = 'key spacer';
-        return spacer; // ON RETOURNE L'ÉLÉMENT
-    }
-
     const key = document.createElement('div');
     key.className = 'key';
     key.id = 'key-' + letter;
     key.dataset.letter = letter;
+    let touched = false;
 
-    // OPTIMISATION POINTERDOWN
-    key.addEventListener('pointerdown', e => {
-        // Empêche le comportement par défaut (zoom/scroll) sur mobile
-        if (e.pointerType === 'touch') e.preventDefault();
-        
-        // Effet visuel immédiat (Glow)
-        key.style.transition = 'none';
-        key.style.boxShadow = '0 0 20px #00D1FF';
-        key.style.background = 'rgba(0, 209, 255, 0.3)';
+    const triggerFeedback = () => {
+        key.classList.add('pressed'); // Allume le néon via le CSS
         
         setTimeout(() => {
-            key.style.transition = '0.4s';
-            key.style.boxShadow = '';
-            key.style.background = '';
-        }, 150);
+            key.classList.remove('pressed'); // Éteint le néon
+        }, 100);
 
         handleInput(letter);
+    };
+
+    key.addEventListener('touchstart', e => {
+        e.preventDefault();
+        touched = true;
+        triggerFeedback();
+    }, { passive: false });
+
+    key.addEventListener('click', () => {
+        if (touched) { touched = false; return; }
+        triggerFeedback();
     });
 
-    return key; // CRUCIAL : ON RETOURNE LA TOUCHE
+    return key;
 }
 
 function buildKeyboard() {
