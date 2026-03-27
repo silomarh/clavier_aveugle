@@ -841,6 +841,15 @@ const LAYOUTS = {
     }
 };
 
+    // 1. Initialisation (Remplace par tes vraies clés)
+const supabaseUrl = 'https://mfcawmmafaqrenebffcb.supabase.co';
+const supabaseKey = 'sb_publishable_46s992wcsegGOghoAVPFfQ_HiylxsI9';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+// 2. Ton matricule Sniper
+const PLAYER_ID = localStorage.getItem('fasterty_id') || 'SNIPER-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+localStorage.setItem('fasterty_id', PLAYER_ID);
+    
 // ========== STATE ==========
 let lang = 'fr';
 let timeLeft = 60;
@@ -873,6 +882,30 @@ function generateSniperId() {
 const PLAYER_ID = generateSniperId();
 console.log("Logged as:", PLAYER_ID);
 
+// 3. LA FONCTION (Bien définie ici)
+async function sendScoreToSupabase(finalScore, finalAccuracy) {
+    console.log("Tentative d'envoi pour :", PLAYER_ID);
+    
+    const { data, error } = await supabaseClient
+        .from('leaderboard')
+        .insert([
+            { 
+                sniper_id: PLAYER_ID, 
+                score: finalScore, 
+                accuracy: finalAccuracy,
+                lang: lang,
+                seed: seed // Assure-toi que ces variables existent
+            }
+        ]);
+
+    if (error) {
+        console.error('Erreur Supabase:', error.message);
+    } else {
+        console.log('Score enregistré !');
+    }
+}
+
+    
 // ========== SEEDED RANDOM ==========
 function seededRandom(s) {
     let hash = 0;
@@ -1342,6 +1375,7 @@ const accuracy = totalAttempts > 0
 
     // Envoi des deux données à Supabase
     sendScoreToSupabase(score, accuracy);
+    
     // WhatsApp
     const url = window.location.origin + window.location.pathname + `?seed=${seed}&lang=${lang}`;
     const msg = I18N[lang].wa_msg(url, score);
@@ -1389,37 +1423,6 @@ window.addEventListener('load', () => {
         sub.style.color = '#ff9f0a';
     }
 });
-    // 1. Initialisation (Remplace par tes vraies clés)
-const supabaseUrl = 'https://mfcawmmafaqrenebffcb.supabase.co';
-const supabaseKey = 'sb_publishable_46s992wcsegGOghoAVPFfQ_HiylxsI9';
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-// 2. Ton matricule Sniper
-const PLAYER_ID = localStorage.getItem('fasterty_id') || 'SNIPER-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-localStorage.setItem('fasterty_id', PLAYER_ID);
-
-// 3. LA FONCTION (Bien définie ici)
-async function sendScoreToSupabase(finalScore, finalAccuracy) {
-    console.log("Tentative d'envoi pour :", PLAYER_ID);
-    
-    const { data, error } = await supabaseClient
-        .from('leaderboard')
-        .insert([
-            { 
-                sniper_id: PLAYER_ID, 
-                score: finalScore, 
-                accuracy: finalAccuracy,
-                lang: lang,
-                seed: seed // Assure-toi que ces variables existent
-            }
-        ]);
-
-    if (error) {
-        console.error('Erreur Supabase:', error.message);
-    } else {
-        console.log('Score enregistré !');
-    }
-}
 </script>
 </body>
 </html>
